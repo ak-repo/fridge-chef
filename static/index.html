@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fridge Chef</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>🍳 Fridge Chef</h1>
+    <p>Show us your fridge or type what you have. Get recipes and smart substitutions.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1. Photo <span class="optional">optional</span></h2>
+      <label class="dropzone" id="dropzone" for="photo-input">
+        <span class="dropzone-icon" aria-hidden="true">📷</span>
+        <span>Tap to add photos, or drag them here <small>(up to 4)</small></span>
+      </label>
+      <input type="file" id="photo-input" accept="image/*" multiple hidden>
+      <div class="previews" id="previews"></div>
+      <button type="button" class="btn secondary" id="detect-btn" disabled>Detect ingredients</button>
+      <p class="status" id="detect-status" role="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>2. Your ingredients</h2>
+      <label for="ingredients" class="sr-only">Ingredients, separated by commas</label>
+      <textarea id="ingredients" rows="4" maxlength="2000"
+        placeholder="e.g. eggs, tomato, onion, curry leaves, rice, paneer"></textarea>
+      <p class="hint">Detected items appear here. Edit freely: add, remove or correct anything.</p>
+    </section>
+
+    <section class="card">
+      <h2>3. Preferences</h2>
+      <div class="grid">
+        <label>Diet
+          <select id="diet"></select>
+        </label>
+        <label>Cuisine
+          <select id="cuisine"></select>
+        </label>
+        <label>Max time (minutes)
+          <input type="number" id="max-minutes" min="10" max="180" step="5" value="30">
+        </label>
+        <label>Servings
+          <input type="number" id="servings" min="1" max="12" value="2">
+        </label>
+        <label>Recipes
+          <input type="number" id="count" min="1" max="5" value="3">
+        </label>
+      </div>
+    </section>
+
+    <button type="button" class="btn primary wide" id="suggest-btn">Suggest recipes</button>
+    <p class="status" id="suggest-status" role="status"></p>
+
+    <section id="results" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    <small>AI suggestions can be wrong. Check allergens and food safety yourself.</small>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
