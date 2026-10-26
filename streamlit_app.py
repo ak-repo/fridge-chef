@@ -39,7 +39,7 @@ st.caption("Upload a photo of your fridge or type what you have. Get recipes and
 
 with st.sidebar:
     st.header("Settings")
-    api_key = st.text_input("Anthropic API key", type="password", value=os.getenv("ANTHROPIC_API_KEY", ""))
+    api_key = st.text_input("Ollama API key", type="password", value=os.getenv("OLLAMA_API_KEY", ""))
     diet = st.selectbox("Diet", core.DIETS)
     cuisine = st.selectbox("Cuisine", core.CUISINES)
     max_minutes = st.slider("Max cooking time (minutes)", 10, 90, 30, step=5)
@@ -47,7 +47,7 @@ with st.sidebar:
     count = st.slider("Number of recipes", 1, 5, 3)
 
 if not api_key:
-    st.info("Add your Anthropic API key in the sidebar to begin.")
+    st.info("Add your Ollama API key in the sidebar to begin.")
     st.stop()
 
 client = core.make_client(api_key)

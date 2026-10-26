@@ -54,11 +54,11 @@ def test_recipes_rejects_unknown_diet():
 
 
 def test_recipes_missing_key_gives_clear_error(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
     server.get_client.cache_clear()
     res = client.post("/api/recipes", json={"ingredients": "rice"})
     assert res.status_code == 500
-    assert "ANTHROPIC_API_KEY" in res.json()["detail"]
+    assert "OLLAMA_API_KEY" in res.json()["detail"]
 
 
 def test_recipes_bad_model_output_maps_to_502(monkeypatch):

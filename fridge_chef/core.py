@@ -11,8 +11,12 @@ import os
 from typing import Iterable
 
 from anthropic import Anthropic
+from dotenv import load_dotenv
 
-MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5")
+load_dotenv()
+
+MODEL = os.getenv("OLLAMA_MODEL", "gemma4:31b")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "https://ollama.com")
 
 DIETS = ["No restriction", "Vegetarian", "Vegan", "Eggetarian", "Gluten-free", "Dairy-free"]
 CUISINES = [
@@ -23,7 +27,7 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
 class MissingKeyError(RuntimeError):
-    """Raised when no Anthropic API key is configured."""
+    """Raised when no Ollama API key is configured."""
 
 
 class ModelOutputError(ValueError):
@@ -32,12 +36,13 @@ class ModelOutputError(ValueError):
 
 # ---------------------------------------------------------------- client
 def make_client(api_key: str | None = None) -> Anthropic:
-    key = api_key or os.getenv("ANTHROPIC_API_KEY")
+    key = api_key or os.getenv("OLLAMA_API_KEY")
     if not key:
         raise MissingKeyError(
-            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key."
+            "OLLAMA_API_KEY is not set. Copy .env.example to .env and add your "
+            "key from https://ollama.com/settings/keys"
         )
-    return Anthropic(api_key=key)
+    return Anthropic(api_key=key, base_url=OLLAMA_BASE_URL)
 
 
 # --------------------------------------------------------------- parsing

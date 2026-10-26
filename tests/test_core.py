@@ -62,6 +62,6 @@ def test_detect_ingredients_rejects_bad_type():
 
 
 def test_make_client_without_key_raises(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
     with pytest.raises(core.MissingKeyError):
         core.make_client()
