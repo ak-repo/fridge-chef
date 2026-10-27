@@ -15,6 +15,58 @@ const suggestBtn = $("suggest-btn");
 const suggestStatus = $("suggest-status");
 const results = $("results");
 
+// Tabs are enabled only when the panels cannot fit side by side.
+const compactLayout = matchMedia("(max-width: 1099px)");
+const panelNames = ["ingredients", "preferences", "recipes"];
+let activePanel = "ingredients";
+
+function showPanel(name, focusTab = false) {
+  activePanel = name;
+  $("panel-tabs").hidden = !compactLayout.matches;
+  for (const item of panelNames) {
+    const panel = $(`${item}-panel`);
+    const tab = $(`tab-${item}`);
+    const selected = item === name;
+    panel.hidden = compactLayout.matches && !selected;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    if (compactLayout.matches) {
+      panel.setAttribute("role", "tabpanel");
+      panel.setAttribute("aria-labelledby", tab.id);
+    } else {
+      panel.removeAttribute("role");
+      panel.setAttribute("aria-labelledby", item === "ingredients" ? "workspace-title" : item === "preferences" ? "preferences-title" : "results-title");
+    }
+  }
+  if (focusTab) $(`tab-${name}`).focus();
+}
+
+for (const [index, name] of panelNames.entries()) {
+  const tab = $(`tab-${name}`);
+  tab.addEventListener("click", () => showPanel(name));
+  tab.addEventListener("keydown", (event) => {
+    let next;
+    if (event.key === "ArrowRight") next = (index + 1) % panelNames.length;
+    if (event.key === "ArrowLeft") next = (index + panelNames.length - 1) % panelNames.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = panelNames.length - 1;
+    if (next !== undefined) {
+      event.preventDefault();
+      showPanel(panelNames[next], true);
+    }
+  });
+}
+compactLayout.addEventListener("change", () => {
+  const focusedPanel = document.activeElement?.closest(".app-panel");
+  if (focusedPanel) activePanel = focusedPanel.id.replace("-panel", "");
+  showPanel(activePanel);
+  // Keep keyboard focus visible when desktop tabs disappear.
+  if (!compactLayout.matches && document.activeElement?.getAttribute("role") === "tab") {
+    $(activePanel === "ingredients" ? "dropzone" : activePanel === "preferences" ? "diet" : "results-title").focus();
+  }
+});
+showPanel(activePanel);
+
 /** @type {{blob: Blob, name: string, url: string}[]} */
 let photos = [];
 let photoQueue = Promise.resolve();
@@ -233,6 +285,7 @@ suggestBtn.addEventListener("click", async () => {
   const ingredients = ingredientsBox.value.trim();
   if (!ingredients) {
     setStatus(suggestStatus, "Add some ingredients first, by photo or by typing.", "error");
+    showPanel("ingredients");
     ingredientsBox.focus();
     return;
   }
@@ -271,8 +324,10 @@ suggestBtn.addEventListener("click", async () => {
     $("recipe-count").textContent = `${recipes.length} recipe${recipes.length === 1 ? "" : "s"} for you`;
     recipes.forEach((r) => results.append(renderRecipe(r)));
     setStatus(suggestStatus, "");
+    showPanel("recipes");
+    results.scrollTop = 0;
     $("results-title").focus({ preventScroll: true });
-    $("results-title").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+
   } catch (err) {
     results.replaceChildren(el("div", { class: "empty-state" }, [
       el("h3", { text: "Let’s give that another try." }),

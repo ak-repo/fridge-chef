@@ -184,3 +184,66 @@ def test_mobile_layout_and_reduced_motion(page, color_scheme):
         "node => getComputedStyle(node, '::before').animationName") == "none"
     page.evaluate("document.documentElement.style.fontSize = '200%'")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@pytest.mark.parametrize("width,height", [(1440, 900), (1366, 768), (360, 800), (800, 360)])
+def test_fixed_shell_and_panel_overflow(page, width, height):
+    page.set_viewport_size({"width": width, "height": height})
+    ready(page)
+    assert page.evaluate("document.documentElement.scrollHeight <= innerHeight")
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    assert page.locator("#suggest-btn").evaluate(
+        "node => getComputedStyle(node).backgroundColor") == "rgb(9, 186, 210)"
+    if width < 1100:
+        page.get_by_role("tab", name="Recipes", exact=True).click()
+    page.locator("#results").evaluate("""node => {
+        const content = document.createElement('div');
+        content.style.height = '3000px';
+        content.textContent = 'Long recipe details';
+        node.append(content);
+        node.scrollTop = 500;
+    }""")
+    assert page.locator("#results").evaluate("node => node.scrollTop") > 0
+    page.mouse.wheel(0, 500)
+    assert page.evaluate("scrollY") == 0
+    assert page.evaluate("document.documentElement.scrollHeight <= innerHeight")
+
+
+def test_compact_tabs_validation_generation_and_resize(page):
+    page.set_viewport_size({"width": 360, "height": 800})
+    ready(page)
+    playwright.expect(page.get_by_role("tabpanel", name="Ingredients", exact=True)).to_be_visible()
+    page.locator("#ingredients").fill("tomato, rice")
+    page.get_by_role("tab", name="Ingredients", exact=True).focus()
+    page.keyboard.press("ArrowRight")
+    playwright.expect(page.get_by_role("tab", name="Preferences", exact=True)).to_be_focused()
+    page.locator("#servings").fill("0")
+    page.locator("#suggest-btn").click()
+    playwright.expect(page.locator("#servings")).to_be_focused()
+    page.locator("#servings").fill("2")
+    held = []
+    page.route("**/api/recipes", lambda route: held.append(route))
+    page.locator("#suggest-btn").click()
+    wait_for_route(page, held)
+    held.pop().fulfill(status=502, json={"detail": "Please retry"})
+    playwright.expect(page.locator("#suggest-status")).to_have_text("Please retry")
+    playwright.expect(page.locator("#servings")).to_have_value("2")
+    page.locator("#suggest-btn").click()
+    page.wait_for_function("() => suggesting")
+    wait_for_route(page, held)
+    assert len(held) == 1
+    held[0].fulfill(json={"recipes": [{"title": "Rice", "uses": ["rice"],
+        "missing": [], "substitutions": [], "steps": ["Cook rice."]}]})
+    playwright.expect(page.get_by_role("tab", name="Recipes", exact=True)).to_have_attribute("aria-selected", "true")
+    playwright.expect(page.locator("#results-title")).to_be_focused()
+    page.set_viewport_size({"width": 1440, "height": 900})
+    playwright.expect(page.locator("#panel-tabs")).to_be_hidden()
+    playwright.expect(page.locator("#ingredients-panel")).to_be_visible()
+    playwright.expect(page.locator("#preferences-panel")).to_be_visible()
+    page.set_viewport_size({"width": 360, "height": 800})
+    page.get_by_role("tab", name="Ingredients", exact=True).click()
+    playwright.expect(page.locator("#ingredients")).to_have_value("tomato, rice")
+    page.locator("#ingredients").fill("")
+    page.get_by_role("tab", name="Preferences", exact=True).click()
+    page.locator("#suggest-btn").click()
+    playwright.expect(page.locator("#ingredients")).to_be_focused()

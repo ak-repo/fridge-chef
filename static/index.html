@@ -13,13 +13,14 @@
     <span class="header-note">Good food. Less waste.</span>
   </header>
   <main>
-    <div class="intro">
-      <p class="eyebrow">A little inspiration for your everyday ingredients</p>
-      <h1>Turn what you have into<br class="desktop-break"> something delicious.</h1>
-      <p>Your fridge has possibilities. Let’s find your next meal.</p>
+    <div class="intro"><h1>Your kitchen. Endless possibilities.</h1><p>Start with what you have. Find something delicious.</p></div>
+    <div class="panel-tabs" id="panel-tabs" role="tablist" aria-label="Cooking workspace" hidden>
+      <button type="button" id="tab-ingredients" role="tab" aria-controls="ingredients-panel" aria-selected="true">Ingredients</button>
+      <button type="button" id="tab-preferences" role="tab" aria-controls="preferences-panel" aria-selected="false" tabindex="-1">Preferences</button>
+      <button type="button" id="tab-recipes" role="tab" aria-controls="recipes-panel" aria-selected="false" tabindex="-1">Recipes</button>
     </div>
     <div class="workspace">
-      <section class="card ingredients-panel" aria-labelledby="workspace-title">
+      <section class="card ingredients-panel app-panel" id="ingredients-panel" aria-labelledby="workspace-title">
         <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="workspace-title">What’s in your kitchen?</h2><p class="hint">Type your ingredients, or let a photo do the work.</p></div></div>
         <div class="upload-heading"><h3>Add a photo <span class="optional">Optional</span></h3><span class="hint" id="photo-count" role="status">0 / 4 photos</span></div>
         <button type="button" class="dropzone" id="dropzone" aria-controls="photo-input" aria-describedby="upload-hint">
@@ -37,25 +38,26 @@
           <p class="hint" id="ingredient-hint">Separate items with commas. Review detected ingredients and add, remove, or correct anything.</p>
         </div>
       </section>
-      <section class="card preferences-panel" aria-labelledby="preferences-title">
+      <section class="card preferences-panel app-panel" id="preferences-panel" aria-labelledby="preferences-title">
         <div class="section-heading"><span class="step" aria-hidden="true">02</span><div><h2 id="preferences-title">Make it your own</h2><p class="hint">A few details for a meal that fits.</p></div></div>
-        <div class="grid">
+        <div class="panel-content" tabindex="0" role="region" aria-label="Meal preferences"><div class="grid">
           <label class="full">Diet<select id="diet" disabled></select></label>
           <label class="full">Cuisine<select id="cuisine" disabled></select></label>
           <label class="full">Max cooking time (minutes)<input type="number" id="max-minutes" min="10" max="180" step="5" value="30" required></label>
           <label>Servings<input type="number" id="servings" min="1" max="12" value="2" required></label>
           <label>Recipes<input type="number" id="count" min="1" max="5" value="3" required></label>
         </div>
+        </div><div class="panel-actions">
         <button type="button" class="btn primary wide" id="suggest-btn" disabled>Find recipes</button>
         <p class="status" id="suggest-status" role="status"></p>
         <button type="button" class="btn secondary" id="retry-options-btn" hidden>Retry loading preferences</button>
-        <p class="preferences-note">A fresh idea starts with what you already have.</p>
+        </div>
       </section>
-    </div>
-    <section class="results-section" aria-labelledby="results-title">
+    <section class="card results-section app-panel" id="recipes-panel" aria-labelledby="results-title">
       <div class="results-heading"><div><p class="eyebrow">From your kitchen, with a little inspiration</p><h2 id="results-title" tabindex="-1">Your next meal</h2></div><span id="recipe-count" class="hint" role="status"></span></div>
-      <div id="results"><div class="empty-state"><span class="empty-mark" aria-hidden="true">✧</span><h3>Something good is waiting.</h3><p>Add your ingredients and find recipes to bring them together.</p></div></div>
+      <div id="results" tabindex="0" role="region" aria-label="Recipe results"><div class="empty-state"><span class="empty-mark" aria-hidden="true">✧</span><h3>Something good is waiting.</h3><p>Add your ingredients and find recipes to bring them together.</p></div></div>
     </section>
+    </div>
   </main>
   <footer><span class="footer-brand">Fridge Chef</span><small>AI suggestions can be wrong. Check allergens and food safety yourself.</small></footer>
   <script src="/static/app.js"></script>
