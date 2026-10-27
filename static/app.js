@@ -17,6 +17,19 @@ const results = $("results");
 
 /** @type {{blob: Blob, name: string, url: string}[]} */
 let photos = [];
+let photoQueue = Promise.resolve();
+let pendingPhotoBatches = 0;
+let detecting = false;
+let optionsReady = false;
+let optionsLoading = false;
+let suggesting = false;
+const retryOptionsBtn = $("retry-options-btn");
+
+function updateButtons() {
+  detectBtn.disabled = photos.length === 0 || pendingPhotoBatches > 0 || detecting;
+  suggestBtn.disabled = !optionsReady || optionsLoading || suggesting;
+  retryOptionsBtn.disabled = optionsLoading;
+}
 
 // ------------------------------------------------------------- helpers
 function el(tag, props = {}, children = []) {
@@ -69,17 +82,26 @@ async function shrinkImage(file) {
   }
 }
 
-async function addPhotos(fileList) {
+function addPhotos(fileList) {
   const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-  for (const file of files) {
-    if (photos.length >= MAX_PHOTOS) {
-      setStatus(detectStatus, `You can add up to ${MAX_PHOTOS} photos.`, "error");
-      break;
+  pendingPhotoBatches += 1;
+  updateButtons();
+  photoQueue = photoQueue.then(async () => {
+    for (const file of files) {
+      if (photos.length >= MAX_PHOTOS) {
+        setStatus(detectStatus, `You can add up to ${MAX_PHOTOS} photos.`, "error");
+        break;
+      }
+      const blob = await shrinkImage(file);
+      photos.push({ blob, name: file.name, url: URL.createObjectURL(blob) });
     }
-    const blob = await shrinkImage(file);
-    photos.push({ blob, name: file.name, url: URL.createObjectURL(blob) });
-  }
-  renderPreviews();
+  }).catch((err) => {
+    setStatus(detectStatus, `Couldn't add photos: ${err.message}`, "error");
+  }).finally(() => {
+    pendingPhotoBatches -= 1;
+    renderPreviews();
+  });
+  return photoQueue;
 }
 
 function renderPreviews() {
@@ -93,13 +115,14 @@ function renderPreviews() {
     });
     previews.append(el("div", { class: "thumb" }, [el("img", { src: photo.url, alt: "Selected photo" }), remove]));
   });
-  detectBtn.disabled = photos.length === 0;
+  updateButtons();
 }
 
 photoInput.addEventListener("change", async () => {
   setStatus(detectStatus, "");
-  await addPhotos(photoInput.files);
+  const files = Array.from(photoInput.files);
   photoInput.value = "";
+  await addPhotos(files);
 });
 
 ["dragenter", "dragover"].forEach((type) =>
@@ -117,10 +140,12 @@ photoInput.addEventListener("change", async () => {
 dropzone.addEventListener("drop", (e) => addPhotos(e.dataTransfer.files));
 
 detectBtn.addEventListener("click", async () => {
+  if (detecting || pendingPhotoBatches > 0 || photos.length === 0) return;
   const body = new FormData();
   photos.forEach((p, i) => body.append("files", p.blob, p.name || `photo-${i}.jpg`));
 
-  detectBtn.disabled = true;
+  detecting = true;
+  updateButtons();
   setStatus(detectStatus, "Looking at your photos...", "busy");
   try {
     const { ingredients } = await api("/api/detect", { method: "POST", body });
@@ -134,7 +159,8 @@ detectBtn.addEventListener("click", async () => {
   } catch (err) {
     setStatus(detectStatus, err.message, "error");
   } finally {
-    detectBtn.disabled = photos.length === 0;
+    detecting = false;
+    updateButtons();
   }
 });
 
@@ -196,6 +222,7 @@ function renderRecipe(recipe) {
 }
 
 suggestBtn.addEventListener("click", async () => {
+  if (!optionsReady || optionsLoading || suggesting) return;
   const ingredients = ingredientsBox.value.trim();
   if (!ingredients) {
     setStatus(suggestStatus, "Add some ingredients first, by photo or by typing.", "error");
@@ -212,7 +239,8 @@ suggestBtn.addEventListener("click", async () => {
     count: Number($("count").value) || 3,
   };
 
-  suggestBtn.disabled = true;
+  suggesting = true;
+  updateButtons();
   results.replaceChildren();
   setStatus(suggestStatus, "Cooking up ideas...", "busy");
   try {
@@ -227,19 +255,35 @@ suggestBtn.addEventListener("click", async () => {
   } catch (err) {
     setStatus(suggestStatus, err.message, "error");
   } finally {
-    suggestBtn.disabled = false;
+    suggesting = false;
+    updateButtons();
   }
 });
 
 // ------------------------------------------------------------- startup
 async function loadOptions() {
+  if (optionsLoading) return;
+  optionsLoading = true;
+  optionsReady = false;
+  updateButtons();
   try {
     const { diets, cuisines } = await api("/api/options");
+    if (![diets, cuisines].every((list) =>
+      Array.isArray(list) && list.length > 0 && list.every((item) => typeof item === "string" && item.trim())
+    )) throw new Error("Invalid options response");
     $("diet").replaceChildren(...diets.map((d) => el("option", { value: d, text: d })));
     $("cuisine").replaceChildren(...cuisines.map((c) => el("option", { value: c, text: c })));
+    optionsReady = true;
+    retryOptionsBtn.hidden = true;
+    setStatus(suggestStatus, "");
   } catch (err) {
-    setStatus(suggestStatus, "Couldn't reach the server. Is it running?", "error");
+    retryOptionsBtn.hidden = false;
+    setStatus(suggestStatus, "Couldn't load preferences. Check your connection and retry.", "error");
+  } finally {
+    optionsLoading = false;
+    updateButtons();
   }
 }
 
+retryOptionsBtn.addEventListener("click", loadOptions);
 loadOptions();

@@ -13,12 +13,12 @@ This document describes the end-to-end workflow from setup through ingredient de
 
 ## 2. Main user workflow
 
-1. The browser loads the page and requests `/api/options` to populate diet and cuisine choices. `/api/health` reports server status and the selected model.
-2. The user either types ingredients or selects up to four fridge or pantry photos. The browser resizes photos where supported, shows previews, and sends them to `/api/detect` as multipart form data.
+1. The browser loads the page and requests `/api/options` to populate diet and cuisine choices. Recipe submission stays disabled until options load; a failed load offers a retry button. `/api/health` reports server status and the selected model.
+2. The user either types ingredients or selects up to four fridge or pantry photos. The browser serializes photo additions and resizes photos where supported, shows previews, and sends them to `/api/detect` as multipart form data. Detection stays disabled while photos are processing or a detection request is active.
 3. The API checks photo count, content type, and 5 MB per-photo limit. The core converts each accepted image to base64, asks the configured vision model to identify clearly visible ingredients, parses the JSON response, removes blanks and case-insensitive duplicates, and returns the ingredient list.
 4. The browser merges detected ingredients with any typed list. The user can review and edit the comma-separated ingredients before requesting recipes.
 5. The browser sends ingredients and preferences (`diet`, `cuisine`, `max_minutes`, `servings`, and `count`) to `/api/recipes`. The API validates the request, then the core asks the model for recipes in the expected JSON shape.
-6. The core extracts JSON from the response, normalizes recipe fields and lists, and returns usable recipes. The browser renders recipe cards with ingredients on hand, missing ingredients, substitutions, timing, difficulty, and steps.
+6. The core decodes the first JSON object or array without consuming trailing commentary. Detection requires an array or an object containing an `ingredients` array; an empty array is valid. List cleaning retains only nonblank strings and deduplicates ingredients case-insensitively. Recipes require a nonblank string title, explicit `uses` and `missing` arrays, and at least one valid step. Repeated steps retain their order. Supplied cooking times must be positive integers; omitted times remain optional. Invalid recipes are dropped, and a response containing no usable recipes returns HTTP 502. The browser renders recipe cards with ingredients on hand, missing ingredients, substitutions, timing, difficulty, and steps.
 
 ## 3. Request and error handling
 
@@ -38,13 +38,14 @@ This document describes the end-to-end workflow from setup through ingredient de
 ## Workflow map
 
 ```text
-Browser / Streamlit
+Browser
         |
         v
 FastAPI routes (server.py) ---- validates input, applies limits, maps errors
         |
         v
-Shared core (fridge_chef/core.py) ---- prompts, Ollama client, JSON parsing/normalization
+Shared core (fridge_chef/core.py) <---- Streamlit (direct calls)
+        |                             prompts, client, parsing/normalization
         |
         v
 Ollama-compatible cloud endpoint ---- model response
@@ -52,3 +53,15 @@ Ollama-compatible cloud endpoint ---- model response
         v
 Shared core -> API/UI -> user sees editable ingredients and recipe cards
 ```
+
+## Browser regression tests
+
+The browser tests use mocked HTTP/model responses and delayed image processing; no API key or running server is needed. Install the optional tooling and Chromium once:
+
+```bash
+pip install -r requirements-browser.txt
+python -m playwright install chromium
+pytest
+```
+
+Without Playwright installed, pytest skips the browser module and runs the core/API suite. With Playwright installed, Chromium must also be installed. The browser cases cover overlapping photo additions, detection locking during preview changes, options failure/retry, and recipe-request locking.

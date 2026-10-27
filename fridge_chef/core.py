@@ -56,23 +56,22 @@ def extract_json(text: str):
     if not candidates:
         raise ModelOutputError("The model reply did not contain JSON.")
     start = min(candidates)
-    closer = "}" if text[start] == "{" else "]"
-    end = text.rfind(closer)
-    if end <= start:
-        raise ModelOutputError("The model reply contained incomplete JSON.")
     try:
-        return json.loads(text[start : end + 1])
+        value, _ = json.JSONDecoder().raw_decode(text, start)
+        return value
     except json.JSONDecodeError as err:
         raise ModelOutputError(f"The model reply was not valid JSON: {err}") from err
 
 
-def _clean_strings(values) -> list[str]:
-    """Keep non-empty strings, strip whitespace, drop duplicates (case-insensitive)."""
+def _clean_strings(values, *, deduplicate: bool = True) -> list[str]:
+    """Keep non-empty strings, optionally dropping case-insensitive duplicates."""
     seen: set[str] = set()
     out: list[str] = []
     for v in values if isinstance(values, list) else []:
-        s = str(v).strip()
-        if s and s.lower() not in seen:
+        if not isinstance(v, str):
+            continue
+        s = v.strip()
+        if s and (not deduplicate or s.lower() not in seen):
             seen.add(s.lower())
             out.append(s)
     return out
@@ -87,7 +86,19 @@ def normalize_recipes(data) -> list[dict]:
 
     recipes = []
     for raw in data:
-        if not isinstance(raw, dict) or not raw.get("title"):
+        if not isinstance(raw, dict):
+            continue
+        title = raw.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        if not all(isinstance(raw.get(key), list) for key in ("uses", "missing")):
+            continue
+        steps = _clean_strings(raw.get("steps"), deduplicate=False)
+        if not steps:
+            continue
+        if "time_minutes" in raw and (
+            type(raw["time_minutes"]) is not int or raw["time_minutes"] <= 0
+        ):
             continue
         subs = []
         for s in raw.get("substitutions", []) if isinstance(raw.get("substitutions"), list) else []:
@@ -101,13 +112,13 @@ def normalize_recipes(data) -> list[dict]:
                 )
         recipes.append(
             {
-                "title": str(raw["title"]),
+                "title": title.strip(),
                 "time_minutes": raw.get("time_minutes"),
                 "difficulty": str(raw.get("difficulty", "")),
                 "uses": _clean_strings(raw.get("uses")),
                 "missing": _clean_strings(raw.get("missing")),
                 "substitutions": subs,
-                "steps": _clean_strings(raw.get("steps")),
+                "steps": steps,
             }
         )
     if not recipes:
@@ -160,7 +171,9 @@ def detect_ingredients(client: Anthropic, images: Iterable[tuple[bytes, str]]) -
     )
     data = extract_json(_ask(client, content, max_tokens=800))
     if isinstance(data, dict):
-        data = data.get("ingredients", [])
+        data = data.get("ingredients")
+    if not isinstance(data, list):
+        raise ModelOutputError("Expected an ingredient list.")
     return _clean_strings(data)
 
 

@@ -94,3 +94,17 @@ def test_detect_rejects_oversized_photo(monkeypatch):
     monkeypatch.setattr(server, "MAX_PHOTO_BYTES", 10)
     res = client.post("/api/detect", files=[("files", ("a.png", b"x" * 50, "image/png"))])
     assert res.status_code == 413
+
+
+def test_invalid_detect_response_maps_to_502(monkeypatch):
+    fake_client(monkeypatch)
+    monkeypatch.setattr(core, "_ask", lambda *a, **k: '{"ingredients": "tomato"}')
+    res = client.post("/api/detect", files=[("files", ("a.png", b"photo", "image/png"))])
+    assert res.status_code == 502
+
+
+def test_unusable_recipes_map_to_502(monkeypatch):
+    fake_client(monkeypatch)
+    monkeypatch.setattr(core, "_ask", lambda *a, **k: '[{"title": "Toast"}]')
+    res = client.post("/api/recipes", json={"ingredients": "bread"})
+    assert res.status_code == 502
