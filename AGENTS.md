@@ -24,6 +24,10 @@ Use four spaces for Python indentation, `snake_case` for functions and variables
 
 Use pytest. Name test modules `test_*.py` and test functions `test_*`. Add or update tests alongside changes to parsing, normalization, validation, or route behavior. Mock external model calls so tests remain offline and do not incur API usage. Run `pytest` from the repository root.
 
+## Agentic Change History
+
+For each task where an agent makes or proposes code changes, append an entry to `docs/AGENTIC_PROMPT_HISTORY.md`. Record the date, the user's prompt, a short summary of files and decisions, and verification performed (or why none was run). Preserve the user's wording when practical, but omit secrets, credentials, and other sensitive data. Keep entries chronological; do not rewrite earlier entries.
+
 ## Commit & Pull Request Guidelines
 
 Do not create commits or run `git push` or `git pull`. Leave changes in the working tree for the repository owner to review and manage. Recent history uses Conventional Commit-style prefixes, for example `feat: ...`; follow this convention when describing proposed changes. Pull request descriptions should explain the user-visible change, note configuration or API impact, and include test results. For browser-facing changes, include a screenshot when it helps reviewers assess the result; link related issues when available.
