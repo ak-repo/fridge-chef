@@ -126,3 +126,61 @@ def test_options_failure_retry_and_recipe_request_state(page):
     playwright.expect(page.locator("#suggest-btn")).to_be_disabled()
     requests[0].fulfill(status=502, json={"detail": "Try again"})
     playwright.expect(page.locator("#suggest-btn")).to_be_enabled()
+
+
+def test_validation_and_complete_recipe_rendering(page):
+    ready(page)
+    requests = []
+    page.route("**/api/recipes", lambda route: requests.append(route))
+    page.locator("#suggest-btn").click()
+    playwright.expect(page.locator("#ingredients")).to_be_focused()
+    page.locator("#ingredients").fill("tomato, rice")
+    page.locator("#servings").fill("0")
+    page.locator("#suggest-btn").click()
+    playwright.expect(page.locator("#servings")).to_be_focused()
+    assert not requests
+    page.locator("#servings").fill("2")
+    page.locator("#suggest-btn").click()
+    wait_for_route(page, requests)
+    playwright.expect(page.locator("#results")).to_have_attribute("aria-busy", "true")
+    requests[0].fulfill(json={"recipes": [{
+        "title": "Tomato rice <script>", "time_minutes": 25, "difficulty": "Easy",
+        "uses": ["tomato", "rice"], "missing": ["butter"],
+        "substitutions": [{"missing": "butter", "substitute": "oil", "note": "Use a little."}],
+        "steps": ["Chop tomatoes.", "Cook with rice."],
+    }]})
+    playwright.expect(page.locator("#recipe-count")).to_have_text("1 recipe for you")
+    playwright.expect(page.locator("#results-title")).to_be_focused()
+    playwright.expect(page.locator("#results")).to_have_attribute("aria-busy", "false")
+    playwright.expect(page.locator(".recipe h3")).to_have_text("Tomato rice <script>")
+    assert page.locator("#results script").count() == 0
+    assert page.locator(".recipe ol li").count() == 2
+    playwright.expect(page.locator(".chip.missing")).to_have_text("butter")
+    playwright.expect(page.locator(".subs")).to_contain_text("oil")
+    playwright.expect(page.locator("#ingredients")).to_have_value("tomato, rice")
+
+
+def test_keyboard_upload_and_photo_count(page):
+    ready(page)
+    page.locator("#dropzone").focus()
+    with page.expect_file_chooser() as chooser:
+        page.keyboard.press("Enter")
+    chooser.value.set_files({"name": "pantry.png", "mimeType": "image/png", "buffer": b"photo"})
+    playwright.expect(page.locator("#photo-count")).to_have_text("1 / 4 photos")
+    page.get_by_role("button", name="Remove photo 1: pantry.png").click()
+    playwright.expect(page.locator("#photo-count")).to_have_text("0 / 4 photos")
+    playwright.expect(page.locator("#detect-btn")).to_be_disabled()
+
+
+@pytest.mark.parametrize("color_scheme", ["light", "dark"])
+def test_mobile_layout_and_reduced_motion(page, color_scheme):
+    page.set_viewport_size({"width": 360, "height": 800})
+    page.emulate_media(color_scheme=color_scheme, reduced_motion="reduce")
+    ready(page)
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    assert page.locator("#dropzone").bounding_box()["height"] >= 44
+    page.locator("#detect-status").evaluate("node => node.classList.add('busy')")
+    assert page.locator("#detect-status").evaluate(
+        "node => getComputedStyle(node, '::before').animationName") == "none"
+    page.evaluate("document.documentElement.style.fontSize = '200%'")
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")

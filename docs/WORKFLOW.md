@@ -65,3 +65,7 @@ pytest
 ```
 
 Without Playwright installed, pytest skips the browser module and runs the core/API suite. With Playwright installed, Chromium must also be installed. The browser cases cover overlapping photo additions, detection locking during preview changes, options failure/retry, and recipe-request locking.
+
+## Browser presentation
+
+The browser uses a cream and sage light palette and follows the device's dark-mode setting with a matching dark palette. On desktop, the ingredient workspace sits beside preferences; mobile stacks these in reading order. Photos are optional, and the upload button supports keyboard selection as well as drag and drop. Review detected ingredients in the comma-separated editor before choosing **Find recipes**. Numeric preferences are checked before submission. Loading and retry states retain entered values, and successful generation focuses the results heading. Reduced-motion preferences disable decorative animation and smooth scrolling. There is no frontend build step or external asset dependency.

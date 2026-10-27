@@ -3,68 +3,61 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>Fridge Chef</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="site-header">
-    <h1>🍳 Fridge Chef</h1>
-    <p>Show us your fridge or type what you have. Get recipes and smart substitutions.</p>
+    <a class="brand" href="/" aria-label="Fridge Chef home"><span class="brand-icon" aria-hidden="true">♧</span> Fridge Chef</a>
+    <span class="header-note">Good food. Less waste.</span>
   </header>
-
   <main>
-    <section class="card">
-      <h2>1. Photo <span class="optional">optional</span></h2>
-      <label class="dropzone" id="dropzone" for="photo-input">
-        <span class="dropzone-icon" aria-hidden="true">📷</span>
-        <span>Tap to add photos, or drag them here <small>(up to 4)</small></span>
-      </label>
-      <input type="file" id="photo-input" accept="image/*" multiple hidden>
-      <div class="previews" id="previews"></div>
-      <button type="button" class="btn secondary" id="detect-btn" disabled>Detect ingredients</button>
-      <p class="status" id="detect-status" role="status"></p>
+    <div class="intro">
+      <p class="eyebrow">A little inspiration for your everyday ingredients</p>
+      <h1>Turn what you have into<br class="desktop-break"> something delicious.</h1>
+      <p>Your fridge has possibilities. Let’s find your next meal.</p>
+    </div>
+    <div class="workspace">
+      <section class="card ingredients-panel" aria-labelledby="workspace-title">
+        <div class="section-heading"><span class="step" aria-hidden="true">01</span><div><h2 id="workspace-title">What’s in your kitchen?</h2><p class="hint">Type your ingredients, or let a photo do the work.</p></div></div>
+        <div class="upload-heading"><h3>Add a photo <span class="optional">Optional</span></h3><span class="hint" id="photo-count" role="status">0 / 4 photos</span></div>
+        <button type="button" class="dropzone" id="dropzone" aria-controls="photo-input" aria-describedby="upload-hint">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v14H4z"/><circle cx="12" cy="12" r="4"/></svg>
+          <strong>Choose photos</strong><span>or drag and drop them here</span>
+        </button>
+        <input type="file" id="photo-input" accept="image/*" multiple hidden>
+        <p class="hint" id="upload-hint">Up to 4 fridge or pantry photos. Clear photos work best.</p>
+        <div class="previews" id="previews"></div>
+        <button type="button" class="btn secondary" id="detect-btn" disabled>Detect ingredients</button>
+        <p class="status" id="detect-status" role="status"></p>
+        <div class="editor">
+          <label for="ingredients">Your ingredients</label>
+          <textarea id="ingredients" rows="4" maxlength="2000" aria-describedby="ingredient-hint" placeholder="e.g. eggs, tomato, onion, rice, paneer"></textarea>
+          <p class="hint" id="ingredient-hint">Separate items with commas. Review detected ingredients and add, remove, or correct anything.</p>
+        </div>
+      </section>
+      <section class="card preferences-panel" aria-labelledby="preferences-title">
+        <div class="section-heading"><span class="step" aria-hidden="true">02</span><div><h2 id="preferences-title">Make it your own</h2><p class="hint">A few details for a meal that fits.</p></div></div>
+        <div class="grid">
+          <label class="full">Diet<select id="diet" disabled></select></label>
+          <label class="full">Cuisine<select id="cuisine" disabled></select></label>
+          <label class="full">Max cooking time (minutes)<input type="number" id="max-minutes" min="10" max="180" step="5" value="30" required></label>
+          <label>Servings<input type="number" id="servings" min="1" max="12" value="2" required></label>
+          <label>Recipes<input type="number" id="count" min="1" max="5" value="3" required></label>
+        </div>
+        <button type="button" class="btn primary wide" id="suggest-btn" disabled>Find recipes</button>
+        <p class="status" id="suggest-status" role="status"></p>
+        <button type="button" class="btn secondary" id="retry-options-btn" hidden>Retry loading preferences</button>
+        <p class="preferences-note">A fresh idea starts with what you already have.</p>
+      </section>
+    </div>
+    <section class="results-section" aria-labelledby="results-title">
+      <div class="results-heading"><div><p class="eyebrow">From your kitchen, with a little inspiration</p><h2 id="results-title" tabindex="-1">Your next meal</h2></div><span id="recipe-count" class="hint" role="status"></span></div>
+      <div id="results"><div class="empty-state"><span class="empty-mark" aria-hidden="true">✧</span><h3>Something good is waiting.</h3><p>Add your ingredients and find recipes to bring them together.</p></div></div>
     </section>
-
-    <section class="card">
-      <h2>2. Your ingredients</h2>
-      <label for="ingredients" class="sr-only">Ingredients, separated by commas</label>
-      <textarea id="ingredients" rows="4" maxlength="2000"
-        placeholder="e.g. eggs, tomato, onion, curry leaves, rice, paneer"></textarea>
-      <p class="hint">Detected items appear here. Edit freely: add, remove or correct anything.</p>
-    </section>
-
-    <section class="card">
-      <h2>3. Preferences</h2>
-      <div class="grid">
-        <label>Diet
-          <select id="diet"></select>
-        </label>
-        <label>Cuisine
-          <select id="cuisine"></select>
-        </label>
-        <label>Max time (minutes)
-          <input type="number" id="max-minutes" min="10" max="180" step="5" value="30">
-        </label>
-        <label>Servings
-          <input type="number" id="servings" min="1" max="12" value="2">
-        </label>
-        <label>Recipes
-          <input type="number" id="count" min="1" max="5" value="3">
-        </label>
-      </div>
-    </section>
-
-    <button type="button" class="btn primary wide" id="suggest-btn" disabled>Suggest recipes</button>
-    <p class="status" id="suggest-status" role="status"></p>
-    <button type="button" class="btn secondary" id="retry-options-btn" hidden>Retry loading preferences</button>
-
-    <section id="results" aria-live="polite"></section>
   </main>
-
-  <footer>
-    <small>AI suggestions can be wrong. Check allergens and food safety yourself.</small>
-  </footer>
-
+  <footer><span class="footer-brand">Fridge Chef</span><small>AI suggestions can be wrong. Check allergens and food safety yourself.</small></footer>
   <script src="/static/app.js"></script>
 </body>
 </html>

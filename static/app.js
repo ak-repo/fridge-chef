@@ -29,6 +29,11 @@ function updateButtons() {
   detectBtn.disabled = photos.length === 0 || pendingPhotoBatches > 0 || detecting;
   suggestBtn.disabled = !optionsReady || optionsLoading || suggesting;
   retryOptionsBtn.disabled = optionsLoading;
+  detectBtn.textContent = detecting ? "Detecting ingredients…" : pendingPhotoBatches ? "Preparing photos…" : "Detect ingredients";
+  suggestBtn.textContent = suggesting ? "Finding recipes…" : optionsLoading ? "Loading preferences…" : "Find recipes";
+  $("diet").disabled = $("cuisine").disabled = !optionsReady;
+  $("photo-count").textContent = `${photos.length} / ${MAX_PHOTOS} photos`;
+  results.setAttribute("aria-busy", String(suggesting));
 }
 
 // ------------------------------------------------------------- helpers
@@ -107,16 +112,18 @@ function addPhotos(fileList) {
 function renderPreviews() {
   previews.replaceChildren();
   photos.forEach((photo, index) => {
-    const remove = el("button", { type: "button", "aria-label": "Remove photo", text: "×" });
+    const remove = el("button", { type: "button", "aria-label": `Remove photo ${index + 1}: ${photo.name}`, text: "×" });
     remove.addEventListener("click", () => {
       URL.revokeObjectURL(photo.url);
       photos.splice(index, 1);
       renderPreviews();
     });
-    previews.append(el("div", { class: "thumb" }, [el("img", { src: photo.url, alt: "Selected photo" }), remove]));
+    previews.append(el("div", { class: "thumb" }, [el("img", { src: photo.url, alt: `Selected photo ${index + 1}: ${photo.name}` }), remove]));
   });
   updateButtons();
 }
+
+dropzone.addEventListener("click", () => photoInput.click());
 
 photoInput.addEventListener("change", async () => {
   setStatus(detectStatus, "");
@@ -230,18 +237,29 @@ suggestBtn.addEventListener("click", async () => {
     return;
   }
 
+  for (const id of ["max-minutes", "servings", "count"]) {
+    if (!$(id).reportValidity()) {
+      $(id).focus();
+      return;
+    }
+  }
+
   const payload = {
     ingredients,
     diet: $("diet").value,
     cuisine: $("cuisine").value,
-    max_minutes: Number($("max-minutes").value) || 30,
-    servings: Number($("servings").value) || 2,
-    count: Number($("count").value) || 3,
+    max_minutes: Number($("max-minutes").value),
+    servings: Number($("servings").value),
+    count: Number($("count").value),
   };
 
   suggesting = true;
   updateButtons();
-  results.replaceChildren();
+  $("recipe-count").textContent = "";
+  results.replaceChildren(el("div", { class: "empty-state" }, [
+    el("h3", { text: "Finding a little kitchen inspiration…" }),
+    el("p", { text: "We’re matching your ingredients and preferences. This may take a moment." }),
+  ]));
   setStatus(suggestStatus, "Cooking up ideas...", "busy");
   try {
     const { recipes } = await api("/api/recipes", {
@@ -249,10 +267,17 @@ suggestBtn.addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    results.replaceChildren();
+    $("recipe-count").textContent = `${recipes.length} recipe${recipes.length === 1 ? "" : "s"} for you`;
     recipes.forEach((r) => results.append(renderRecipe(r)));
     setStatus(suggestStatus, "");
-    results.firstElementChild?.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("results-title").focus({ preventScroll: true });
+    $("results-title").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   } catch (err) {
+    results.replaceChildren(el("div", { class: "empty-state" }, [
+      el("h3", { text: "Let’s give that another try." }),
+      el("p", { text: "Your ingredients and preferences are still here. Choose Find recipes to retry." }),
+    ]));
     setStatus(suggestStatus, err.message, "error");
   } finally {
     suggesting = false;
